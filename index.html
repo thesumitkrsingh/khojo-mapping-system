@@ -41,7 +41,7 @@
         .container {
             display: flex;
             flex: 1;
-            position: relative; /* Added for proper map rendering */
+            position: relative;
         }
         
         .sidebar {
@@ -50,25 +50,104 @@
             padding: 1rem;
             overflow-y: auto;
             color: #ecf0f1;
-            z-index: 500; /* Ensure sidebar stays above map */
+            z-index: 500;
         }
         
         .map-container {
             flex: 1;
             position: relative;
-            z-index: 400; /* Map should be below sidebar but above base */
+            z-index: 400;
         }
         
         #map {
             height: 100%;
             width: 100%;
-            position: absolute; /* Changed to absolute for proper rendering */
+            position: absolute;
             top: 0;
             left: 0;
         }
         
-        /* [Previous styles remain the same until the chatbot styles] */
-
+        .controls {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background-color: #34495e;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .control-group {
+            margin-bottom: 1rem;
+        }
+        
+        h3 {
+            margin-bottom: 0.5rem;
+            color: #f9e79f;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        input[type="text"] {
+            padding: 0.5rem;
+            width: 100%;
+            margin-bottom: 0.5rem;
+            border: 1px solid #7f8c8d;
+            border-radius: 4px;
+            background-color: #ecf0f1;
+        }
+        
+        .marker-list {
+            list-style: none;
+        }
+        
+        .marker-item {
+            padding: 0.75rem;
+            background-color: #34495e;
+            margin-bottom: 0.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: background-color 0.3s;
+        }
+        
+        .marker-item:hover {
+            background-color: #3d566e;
+        }
+        
+        .marker-item button {
+            background-color: #e74c3c;
+            padding: 0.3rem 0.6rem;
+            font-size: 0.8rem;
+        }
+        
+        .marker-item button:hover {
+            background-color: #c0392b;
+        }
+        
+        footer {
+            background-color: #1a5276;
+            color: white;
+            text-align: center;
+            padding: 0.5rem;
+            font-size: 0.8rem;
+        }
+        
         /* Chatbot styles */
         .chatbot-container {
             position: fixed;
@@ -165,7 +244,16 @@
             margin-right: auto;
         }
         
-        /* [Rest of your existing styles remain the same] */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: 300px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -238,11 +326,11 @@
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
             crossorigin=""></script>
     
-    <!-- Axios for API calls -->
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <!-- Google Generative AI SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@google/generative-ai/dist/gemini-api.js"></script>
     
     <script>
-        // Initialize the map - this must come first
+        // Initialize the map
         const map = L.map('map').setView([20.5937, 78.9629], 5); // Default to India view
         
         // Add OpenStreetMap base layer
@@ -259,81 +347,269 @@
             attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
         });
         
-        // [Rest of your original map code remains the same until the Watson Assistant section]
-
-        // Watson Assistant Configuration
-        const WATSON_API_KEY = '0wFCY_ehrD1gwO42WL8_U9tZtY2w0QqjsrO9mePLCZNz';
-        const WATSON_SERVICE_URL = 'https://api.au-syd.assistant.watson.cloud.ibm.com/instances/942fa846-db37-4603-8f71-2620d83070e6';
-        const WATSON_ASSISTANT_ID = 'a1b2c3d4-5678-90ef-ghij-klmnopqrstuv'; // Replace with your assistant ID
-        const WATSON_API_VERSION = '2021-11-27';
+        // Custom icon for markers
+        const customIcon = L.icon({
+            iconUrl: 'https://cdn0.iconfinder.com/data/icons/small-n-flat/24/678111-map-marker-512.png',
+            iconSize: [32, 32],
+            iconAnchor: [16, 32],
+            popupAnchor: [0, -32]
+        });
         
-        let watsonSessionId;
+        // Store markers
+        const markers = [];
+        const markerList = document.getElementById('marker-list');
         
-        // Initialize Watson Assistant session
-        async function initWatsonSession() {
-            try {
-                const response = await axios.post(
-                    `${WATSON_SERVICE_URL}/v2/assistants/${WATSON_ASSISTANT_ID}/sessions?version=${WATSON_API_VERSION}`,
-                    {},
-                    {
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${WATSON_API_KEY}`
-                        }
-                    }
-                );
-                watsonSessionId = response.data.session_id;
-                addBotMessage("Hello! I'm your Khojo Mapping Assistant. How can I help you with locations today?");
-            } catch (error) {
-                console.error('Error initializing Watson session:', error);
-                addBotMessage("Sorry, I'm having trouble connecting right now. Please try again later.");
+        // Add marker to map and list
+        function addMarker(lat, lng, title = 'Untitled Location', draggable = true) {
+            const marker = L.marker([lat, lng], { 
+                draggable,
+                icon: customIcon
+            }).addTo(map);
+            
+            if (title) {
+                marker.bindPopup(`
+                    <div style="font-weight:bold;color:#f9e79f;">${title}</div>
+                    <div>Latitude: ${lat.toFixed(6)}</div>
+                    <div>Longitude: ${lng.toFixed(6)}</div>
+                    <small>Click and drag to move</small>
+                `);
+            }
+            
+            // Add to markers array
+            const markerObj = { marker, title, lat, lng };
+            markers.push(markerObj);
+            
+            // Add to sidebar list
+            const li = document.createElement('li');
+            li.className = 'marker-item';
+            li.innerHTML = `
+                <span>${title}</span>
+                <button data-id="${markers.length - 1}" title="Delete">×</button>
+            `;
+            markerList.appendChild(li);
+            
+            // Add click event to focus on marker
+            li.addEventListener('click', () => {
+                map.setView([lat, lng], 15);
+                marker.openPopup();
+            });
+            
+            // Add delete event
+            li.querySelector('button').addEventListener('click', (e) => {
+                e.stopPropagation();
+                const index = parseInt(e.target.getAttribute('data-id'));
+                removeMarker(index);
+            });
+            
+            // Update position on drag
+            marker.on('dragend', () => {
+                const newPos = marker.getLatLng();
+                markerObj.lat = newPos.lat;
+                markerObj.lng = newPos.lng;
+                marker.setPopupContent(`
+                    <div style="font-weight:bold;color:#f9e79f;">${title}</div>
+                    <div>Latitude: ${newPos.lat.toFixed(6)}</div>
+                    <div>Longitude: ${newPos.lng.toFixed(6)}</div>
+                    <small>Click and drag to move</small>
+                `);
+            });
+            
+            return marker;
+        }
+        
+        // Remove marker from map and list
+        function removeMarker(index) {
+            if (index >= 0 && index < markers.length) {
+                map.removeLayer(markers[index].marker);
+                markers.splice(index, 1);
+                
+                // Rebuild the marker list
+                markerList.innerHTML = '';
+                markers.forEach((markerObj, i) => {
+                    const li = document.createElement('li');
+                    li.className = 'marker-item';
+                    li.innerHTML = `
+                        <span>${markerObj.title}</span>
+                        <button data-id="${i}" title="Delete">×</button>
+                    `;
+                    markerList.appendChild(li);
+                    
+                    li.addEventListener('click', () => {
+                        map.setView([markerObj.lat, markerObj.lng], 15);
+                        markerObj.marker.openPopup();
+                    });
+                    
+                    li.querySelector('button').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        removeMarker(i);
+                    });
+                });
             }
         }
         
-        // Send message to Watson Assistant
-        async function sendToWatson(message) {
-            if (!watsonSessionId) {
-                await initWatsonSession();
+        // Clear all markers
+        function clearMarkers() {
+            markers.forEach(markerObj => {
+                map.removeLayer(markerObj.marker);
+            });
+            markers.length = 0;
+            markerList.innerHTML = '';
+        }
+        
+        // Event listeners for map controls
+        document.getElementById('locate-me').addEventListener('click', () => {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    position => {
+                        const { latitude, longitude } = position.coords;
+                        map.setView([latitude, longitude], 15);
+                        addMarker(latitude, longitude, 'My Location', false);
+                    },
+                    error => {
+                        alert(`Error getting location: ${error.message}`);
+                    },
+                    { enableHighAccuracy: true }
+                );
+            } else {
+                alert('Geolocation is not supported by your browser');
+            }
+        });
+        
+        document.getElementById('add-marker').addEventListener('click', () => {
+            const center = map.getCenter();
+            const title = prompt('Enter a name for this location:', 'New Location');
+            if (title !== null) {
+                addMarker(center.lat, center.lng, title);
+            }
+        });
+        
+        document.getElementById('clear-markers').addEventListener('click', () => {
+            if (markers.length > 0 && confirm('Are you sure you want to remove all locations?')) {
+                clearMarkers();
+            }
+        });
+        
+        document.getElementById('search-button').addEventListener('click', searchLocation);
+        
+        document.getElementById('search-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchLocation();
+            }
+        });
+        
+        function searchLocation() {
+            const query = document.getElementById('search-input').value.trim();
+            if (query) {
+                // Show loading indicator
+                const searchBtn = document.getElementById('search-button');
+                const originalText = searchBtn.textContent;
+                searchBtn.textContent = 'Searching...';
+                searchBtn.disabled = true;
+                
+                // Use Nominatim for geocoding
+                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && data.length > 0) {
+                            const result = data[0];
+                            const lat = parseFloat(result.lat);
+                            const lon = parseFloat(result.lon);
+                            map.setView([lat, lon], 15);
+                            addMarker(lat, lon, result.display_name);
+                            document.getElementById('search-input').value = '';
+                        } else {
+                            alert('Location not found. Please try a different search term.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error searching location:', error);
+                        alert('Error searching location. Please try again.');
+                    })
+                    .finally(() => {
+                        searchBtn.textContent = originalText;
+                        searchBtn.disabled = false;
+                    });
+            }
+        }
+        
+        // Layer controls
+        document.getElementById('streets-layer').addEventListener('click', () => {
+            map.removeLayer(satelliteLayer);
+            map.removeLayer(topoLayer);
+            streetsLayer.addTo(map);
+        });
+        
+        document.getElementById('satellite-layer').addEventListener('click', () => {
+            map.removeLayer(streetsLayer);
+            map.removeLayer(topoLayer);
+            satelliteLayer.addTo(map);
+        });
+        
+        document.getElementById('topo-layer').addEventListener('click', () => {
+            map.removeLayer(streetsLayer);
+            map.removeLayer(satelliteLayer);
+            topoLayer.addTo(map);
+        });
+        
+        // Add click event to add markers
+        map.on('click', e => {
+            if (confirm('Add a location marker here?')) {
+                const title = prompt('Enter a name for this location:', 'New Location');
+                if (title !== null) {
+                    addMarker(e.latlng.lat, e.latlng.lng, title);
+                }
+            }
+        });
+        
+        // Add default markers for important Indian locations
+        addMarker(28.6139, 77.2090, 'New Delhi, India');
+        addMarker(19.0760, 72.8777, 'Mumbai, India');
+        addMarker(12.9716, 77.5946, 'Bengaluru, India');
+
+        // Gemini AI Chatbot Integration
+        const GEMINI_API_KEY = 'AIzaSyAGSN_NuNTC1SMm5fbS2drxh61czjI-tRw';
+        const GEMINI_MODEL_NAME = 'gemini-pro';
+        
+        let geminiModel = null;
+        
+        // Initialize Gemini
+        async function initGemini() {
+            try {
+                const genAI = new googleGenerativeAI.GenerativeAI(GEMINI_API_KEY);
+                const model = genAI.getGenerativeModel({ model: GEMINI_MODEL_NAME });
+                addBotMessage("Hello! I'm your Khojo Mapping Assistant powered by Gemini AI. Ask me about locations!");
+                return model;
+            } catch (error) {
+                console.error('Error initializing Gemini:', error);
+                addBotMessage("Sorry, I'm having trouble connecting right now. Please try again later.");
+                return null;
+            }
+        }
+        
+        // Send message to Gemini
+        async function sendToGemini(message) {
+            if (!geminiModel) {
+                geminiModel = await initGemini();
+                if (!geminiModel) return;
             }
             
             try {
-                const response = await axios.post(
-                    `${WATSON_SERVICE_URL}/v2/assistants/${WATSON_ASSISTANT_ID}/sessions/${watsonSessionId}/message?version=${WATSON_API_VERSION}`,
-                    {
-                        input: {
-                            message_type: 'text',
-                            text: message
-                        }
-                    },
-                    {
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${WATSON_API_KEY}`
-                        }
-                    }
-                );
+                const result = await geminiModel.generateContent(message);
+                const response = await result.response;
+                const text = response.text();
+                addBotMessage(text);
                 
-                // Handle the response
-                if (response.data.output.generic && response.data.output.generic.length > 0) {
-                    const botResponse = response.data.output.generic[0].text;
-                    addBotMessage(botResponse);
-                    
-                    // Check if the response contains location information to plot on the map
-                    if (response.data.context && response.data.context.skills && 
-                        response.data.context.skills['main skill'] && 
-                        response.data.context.skills['main skill'].user_defined &&
-                        response.data.context.skills['main skill'].user_defined.location) {
-                        
-                        const location = response.data.context.skills['main skill'].user_defined.location;
-                        if (location.latitude && location.longitude) {
-                            map.setView([location.latitude, location.longitude], 15);
-                            addMarker(location.latitude, location.longitude, location.name || "Suggested Location");
-                        }
-                    }
+                // Try to extract location coordinates
+                const latLongMatch = text.match(/latitude:? ([\d.-]+),? longitude:? ([\d.-]+)/i);
+                if (latLongMatch) {
+                    const lat = parseFloat(latLongMatch[1]);
+                    const lng = parseFloat(latLongMatch[2]);
+                    map.setView([lat, lng], 15);
+                    addMarker(lat, lng, "Gemini Suggested Location");
                 }
             } catch (error) {
-                console.error('Error sending message to Watson:', error);
-                addBotMessage("Sorry, I'm having trouble responding right now.");
+                console.error('Error with Gemini:', error);
+                addBotMessage("Sorry, I encountered an error. Please try a different question.");
             }
         }
         
@@ -357,13 +633,12 @@
         }
         
         // Chatbot UI controls
-        document.getElementById('chatbot-toggle').addEventListener('click', () => {
+        document.getElementById('chatbot-toggle').addEventListener('click', async () => {
             const chatbot = document.getElementById('chatbot-container');
             chatbot.style.display = chatbot.style.display === 'block' ? 'none' : 'block';
             
-            // Initialize session when first opened
-            if (chatbot.style.display === 'block' && !watsonSessionId) {
-                initWatsonSession();
+            if (chatbot.style.display === 'block' && !geminiModel) {
+                geminiModel = await initGemini();
             }
         });
         
@@ -377,7 +652,7 @@
             if (message) {
                 addUserMessage(message);
                 input.value = '';
-                sendToWatson(message);
+                sendToGemini(message);
             }
         });
         
@@ -388,12 +663,10 @@
                 if (message) {
                     addUserMessage(message);
                     input.value = '';
-                    sendToWatson(message);
+                    sendToGemini(message);
                 }
             }
         });
-
-        // [Rest of your original JavaScript code remains the same]
     </script>
 </body>
 </html>
