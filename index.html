@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Khojo Mapping System</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: #f5f5f5;
+        }
+        
+        header {
+            background-color: #1a5276;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            color: #f9e79f;
+        }
+        
+        .container {
+            display: flex;
+            flex: 1;
+            position: relative; /* Added for proper map rendering */
+        }
+        
+        .sidebar {
+            width: 300px;
+            background-color: #2c3e50;
+            padding: 1rem;
+            overflow-y: auto;
+            color: #ecf0f1;
+            z-index: 500; /* Ensure sidebar stays above map */
+        }
+        
+        .map-container {
+            flex: 1;
+            position: relative;
+            z-index: 400; /* Map should be below sidebar but above base */
+        }
+        
+        #map {
+            height: 100%;
+            width: 100%;
+            position: absolute; /* Changed to absolute for proper rendering */
+            top: 0;
+            left: 0;
+        }
+        
+        /* [Previous styles remain the same until the chatbot styles] */
+
+        /* Chatbot styles */
+        .chatbot-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 350px;
+            z-index: 1000;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            display: none;
+            background-color: white;
+        }
+        
+        .chatbot-header {
+            background-color: #1a5276;
+            color: white;
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        
+        .chatbot-body {
+            height: 300px;
+            background-color: white;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chatbot-messages {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            background-color: #f5f5f5;
+        }
+        
+        .chatbot-input {
+            padding: 10px;
+            display: flex;
+            background-color: white;
+            border-top: 1px solid #ddd;
+        }
+        
+        .chatbot-input input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .chatbot-input button {
+            margin-left: 8px;
+            padding: 8px 15px;
+            background-color: #1a5276;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .chatbot-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #1a5276;
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        
+        .message {
+            margin: 5px 0;
+            padding: 8px 12px;
+            border-radius: 18px;
+            max-width: 80%;
+        }
+        
+        .user-message {
+            background-color: #e3f2fd;
+            margin-left: auto;
+        }
+        
+        .bot-message {
+            background-color: #f1f1f1;
+            margin-right: auto;
+        }
+        
+        /* [Rest of your existing styles remain the same] */
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">Khojo Mapping System</div>
+        <p>Discover and explore locations with precision</p>
+    </header>
+    
+    <div class="container">
+        <div class="sidebar">
+            <div class="controls">
+                <h3>Map Controls</h3>
+                <div class="control-group">
+                    <button id="locate-me">📍 Locate Me</button>
+                    <button id="add-marker">📌 Add Marker</button>
+                    <button id="clear-markers">🧹 Clear Markers</button>
+                </div>
+                
+                <div class="control-group">
+                    <h3>Search Location</h3>
+                    <input type="text" id="search-input" placeholder="Enter address or place name">
+                    <button id="search-button">🔍 Search</button>
+                </div>
+                
+                <div class="control-group">
+                    <h3>Map Layers</h3>
+                    <button id="streets-layer">🗺️ Streets</button>
+                    <button id="satellite-layer">🛰️ Satellite</button>
+                    <button id="topo-layer">⛰️ Topography</button>
+                </div>
+            </div>
+            
+            <div class="markers-list">
+                <h3>Saved Locations</h3>
+                <ul id="marker-list" class="marker-list">
+                    <!-- Markers will be added here dynamically -->
+                </ul>
+            </div>
+        </div>
+        
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+    </div>
+    
+    <footer>
+        <p>Khojo Mapping System &copy; 2023 | Powered by Leaflet.js and OpenStreetMap</p>
+    </footer>
+
+    <!-- Chatbot toggle button -->
+    <div class="chatbot-toggle" id="chatbot-toggle">💬</div>
+    
+    <!-- Chatbot container -->
+    <div class="chatbot-container" id="chatbot-container">
+        <div class="chatbot-header" id="chatbot-header">
+            <h3>Khojo Mapping Assistant</h3>
+            <span id="chatbot-close">×</span>
+        </div>
+        <div class="chatbot-body">
+            <div class="chatbot-messages" id="chatbot-messages"></div>
+            <div class="chatbot-input">
+                <input type="text" id="chatbot-user-input" placeholder="Ask about locations...">
+                <button id="chatbot-send">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+    
+    <!-- Axios for API calls -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    
+    <script>
+        // Initialize the map - this must come first
+        const map = L.map('map').setView([20.5937, 78.9629], 5); // Default to India view
+        
+        // Add OpenStreetMap base layer
+        const streetsLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Add other tile layers
+        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        });
+        
+        const topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+        });
+        
+        // [Rest of your original map code remains the same until the Watson Assistant section]
+
+        // Watson Assistant Configuration
+        const WATSON_API_KEY = 'q6EgrTQcXFHs9uCiWHyxXBMeiXzcJy8BY_wwG_oIpRd-';
+        const WATSON_SERVICE_URL = 'https://api.au-syd.assistant.watson.cloud.ibm.com/instances/942fa846-db37-4603-8f71-2620d83070e6';
+        const WATSON_ASSISTANT_ID = 'YOUR_ASSISTANT_ID'; // Replace with your assistant ID
+        const WATSON_API_VERSION = '2021-11-27';
+        
+        let watsonSessionId;
+        
+        // Initialize Watson Assistant session
+        async function initWatsonSession() {
+            try {
+                const response = await axios.post(
+                    `${WATSON_SERVICE_URL}/v2/assistants/${WATSON_ASSISTANT_ID}/sessions?version=${WATSON_API_VERSION}`,
+                    {},
+                    {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${WATSON_API_KEY}`
+                        }
+                    }
+                );
+                watsonSessionId = response.data.session_id;
+                addBotMessage("Hello! I'm your Khojo Mapping Assistant. How can I help you with locations today?");
+            } catch (error) {
+                console.error('Error initializing Watson session:', error);
+                addBotMessage("Sorry, I'm having trouble connecting right now. Please try again later.");
+            }
+        }
+        
+        // Send message to Watson Assistant
+        async function sendToWatson(message) {
+            if (!watsonSessionId) {
+                await initWatsonSession();
+            }
+            
+            try {
+                const response = await axios.post(
+                    `${WATSON_SERVICE_URL}/v2/assistants/${WATSON_ASSISTANT_ID}/sessions/${watsonSessionId}/message?version=${WATSON_API_VERSION}`,
+                    {
+                        input: {
+                            message_type: 'text',
+                            text: message
+                        }
+                    },
+                    {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${WATSON_API_KEY}`
+                        }
+                    }
+                );
+                
+                // Handle the response
+                if (response.data.output.generic && response.data.output.generic.length > 0) {
+                    const botResponse = response.data.output.generic[0].text;
+                    addBotMessage(botResponse);
+                    
+                    // Check if the response contains location information to plot on the map
+                    if (response.data.context && response.data.context.skills && 
+                        response.data.context.skills['main skill'] && 
+                        response.data.context.skills['main skill'].user_defined &&
+                        response.data.context.skills['main skill'].user_defined.location) {
+                        
+                        const location = response.data.context.skills['main skill'].user_defined.location;
+                        if (location.latitude && location.longitude) {
+                            map.setView([location.latitude, location.longitude], 15);
+                            addMarker(location.latitude, location.longitude, location.name || "Suggested Location");
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error sending message to Watson:', error);
+                addBotMessage("Sorry, I'm having trouble responding right now.");
+            }
+        }
+        
+        // Add message to chat UI
+        function addUserMessage(text) {
+            const messagesDiv = document.getElementById('chatbot-messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', 'user-message');
+            messageDiv.textContent = text;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        function addBotMessage(text) {
+            const messagesDiv = document.getElementById('chatbot-messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', 'bot-message');
+            messageDiv.textContent = text;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        // Chatbot UI controls
+        document.getElementById('chatbot-toggle').addEventListener('click', () => {
+            const chatbot = document.getElementById('chatbot-container');
+            chatbot.style.display = chatbot.style.display === 'block' ? 'none' : 'block';
+            
+            // Initialize session when first opened
+            if (chatbot.style.display === 'block' && !watsonSessionId) {
+                initWatsonSession();
+            }
+        });
+        
+        document.getElementById('chatbot-close').addEventListener('click', () => {
+            document.getElementById('chatbot-container').style.display = 'none';
+        });
+        
+        document.getElementById('chatbot-send').addEventListener('click', () => {
+            const input = document.getElementById('chatbot-user-input');
+            const message = input.value.trim();
+            if (message) {
+                addUserMessage(message);
+                input.value = '';
+                sendToWatson(message);
+            }
+        });
+        
+        document.getElementById('chatbot-user-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const input = document.getElementById('chatbot-user-input');
+                const message = input.value.trim();
+                if (message) {
+                    addUserMessage(message);
+                    input.value = '';
+                    sendToWatson(message);
+                }
+            }
+        });
+
+        // [Rest of your original JavaScript code remains the same]
+    </script>
+</body>
+</html>
