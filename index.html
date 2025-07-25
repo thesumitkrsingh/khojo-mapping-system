@@ -567,18 +567,15 @@
         addMarker(12.9716, 77.5946, 'Bengaluru, India');
 
         // Gemini AI Chatbot Integration
-        const GEMINI_API_KEY = 'AIzaSyAGSN_NuNTC1SMm5fbS2drxh61czjI-tRw';
-        const GEMINI_MODEL_NAME = 'gemini-pro';
+        const GEMINI_API_URL = 'https://gemini.google.com/app';
         
         let geminiModel = null;
         
         // Initialize Gemini
         async function initGemini() {
             try {
-                const genAI = new googleGenerativeAI.GenerativeAI(GEMINI_API_KEY);
-                const model = genAI.getGenerativeModel({ model: GEMINI_MODEL_NAME });
-                addBotMessage("Hello! I'm your Khojo Mapping Assistant powered by Gemini AI. Ask me about locations!");
-                return model;
+                addBotMessage("Hello! I'm your Khojo Mapping Assistant. For advanced AI features, please visit <a href='https://gemini.google.com/app' target='_blank'>Gemini</a> directly.");
+                return null;
             } catch (error) {
                 console.error('Error initializing Gemini:', error);
                 addBotMessage("Sorry, I'm having trouble connecting right now. Please try again later.");
@@ -594,18 +591,17 @@
             }
             
             try {
-                const result = await geminiModel.generateContent(message);
-                const response = await result.response;
-                const text = response.text();
-                addBotMessage(text);
+                addBotMessage("For advanced AI features, please visit <a href='https://gemini.google.com/app' target='_blank'>Gemini</a> directly. Here's what I can do with your message locally: " + message);
                 
-                // Try to extract location coordinates
-                const latLongMatch = text.match(/latitude:? ([\d.-]+),? longitude:? ([\d.-]+)/i);
+                // Try to extract location coordinates from simple patterns
+                const latLongMatch = message.match(/(\d+\.\d+)[,\s]+(\d+\.\d+)/);
                 if (latLongMatch) {
                     const lat = parseFloat(latLongMatch[1]);
                     const lng = parseFloat(latLongMatch[2]);
-                    map.setView([lat, lng], 15);
-                    addMarker(lat, lng, "Gemini Suggested Location");
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        map.setView([lat, lng], 15);
+                        addMarker(lat, lng, "User Provided Location");
+                    }
                 }
             } catch (error) {
                 console.error('Error with Gemini:', error);
@@ -627,7 +623,7 @@
             const messagesDiv = document.getElementById('chatbot-messages');
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message', 'bot-message');
-            messageDiv.textContent = text;
+            messageDiv.innerHTML = text;
             messagesDiv.appendChild(messageDiv);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
